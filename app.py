@@ -5,12 +5,12 @@ import re
 import traceback
 from collections import defaultdict
 
-
 from sanic import Sanic
 from sanic.exceptions import NotFound
 from sanic.log import logger
 from sanic.response import json
-from sanic_openapi import swagger_blueprint, doc
+# from sanic_openapi import swagger_blueprint, doc
+from classifier import image_classify
 
 from PIL import Image
 from io import BytesIO
@@ -30,13 +30,6 @@ n_workers = int(os.environ.get('WORKERS', multiprocessing.cpu_count()))
 # model_dir = f"/familia/model/{model_name}"
 model_dir = f"/Users/lichengzhi/bailian/workspace/Familia/model/{model_name}"
 emb_file = f"{model_name}_twe_lda.model"
-
-
-img_transforms = transforms.Compose([
-        transforms.CenterCrop((224, 224)),
-        transforms.ToTensor(),
-        transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
-    ])
 
 
 def get_apperence(word, sentence):
@@ -122,10 +115,6 @@ async def ignore_404s(request, exception):
 
 
 @app.route('/classification', methods=["POST"])
-@doc.summary("Image Classification")
-@doc.description("图片分类，区分该图片是门店/货架/其他")
-# @doc.consumes(doc.String(name='image', description="图片"), required=True)
-@doc.response(200, None, description="""返回一段文本，为分类结果：{门店， 货架， 其他}。""")
 async def api_classification(request):
     try:
         test_file = request.files.get('file')
@@ -137,8 +126,7 @@ async def api_classification(request):
         if file_parameters["body"] is None:
             return error_response()
         image = Image.open(BytesIO(file_parameters["body"]))
-        image.show()
-        result = "其他"
+        result = image_classify(image)
         return response(data=result)
     except Exception as err:
         logger.error(err, exc_info=True)
