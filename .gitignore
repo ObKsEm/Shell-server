@@ -1,3 +1,7 @@
 .idea/
 .DS_Store
 models/
+.pytest_cache/
+nohup.out
+__pycache__
+configs/
