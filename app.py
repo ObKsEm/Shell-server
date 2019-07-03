@@ -3,18 +3,19 @@ import multiprocessing
 import os
 import re
 import traceback
-from collections import defaultdict
+from collections import defaultdict, Counter
 
 from sanic import Sanic
 from sanic.exceptions import NotFound
 from sanic.log import logger
 from sanic.response import json
-# from sanic_openapi import swagger_blueprint, doc
-from classifier import image_classify
+from sanic_openapi import swagger_blueprint, doc
+from model_wrapper import ClassifierModelWrapper, DetectorModelWrapper
 
 from PIL import Image
 from io import BytesIO
-
+import cv2
+import numpy as np
 
 app = Sanic("Shell Api", strict_slashes=True)
 app.blueprint(swagger_blueprint)
@@ -24,12 +25,18 @@ app.config.API_PRODUCES_CONTENT_TYPES = ['application/json']
 
 RE_BACKSPACES = re.compile("\b+")
 
-model_name = os.environ.get("MODEL_NAME", 'news').lower()
+cls_model_name = os.environ.get("MODEL_NAME", 'classifier').lower()
+det_model_name = os.environ.get("MODEL_NAME", 'detector').lower()
+
 n_workers = int(os.environ.get('WORKERS', multiprocessing.cpu_count()))
 
 # model_dir = f"/familia/model/{model_name}"
-model_dir = f"/Users/lichengzhi/bailian/workspace/Familia/model/{model_name}"
-emb_file = f"{model_name}_twe_lda.model"
+cls_model_dir = f"./models/{cls_model_name}"
+det_model_dir = f"./models/{det_model_name}"
+det_config_dir = f"./configs/{det_model_name}.py"
+
+cls_model = ClassifierModelWrapper(cls_model_dir)
+det_model = DetectorModelWrapper(det_model_dir, det_config_dir)
 
 
 def get_apperence(word, sentence):
@@ -78,7 +85,11 @@ def strip_to_none(text: str):
 
 
 def response(success: bool = True, data=None, message=None):
-    data = {'success': success, 'message': message, 'data': data}
+    if success:
+        code = 200
+    else:
+        code = 500
+    data = {'code': code, 'message': message, 'data': data}
     data = {k: v for k, v in data.items() if v is not None}
     try:
         return json(data, ensure_ascii=False)
@@ -117,17 +128,48 @@ async def ignore_404s(request, exception):
 @app.route('/classification', methods=["POST"])
 async def api_classification(request):
     try:
-        test_file = request.files.get('file')
+        data_file = request.files.get('file')
+        if data_file is None:
+            return error_response("Request for none file data")
         file_parameters = {
-            'body': test_file.body,
-            'name': test_file.name,
-            'type': test_file.type,
+            'body': data_file.body,
+            'name': data_file.name,
+            'type': data_file.type,
         }
         if file_parameters["body"] is None:
-            return error_response()
+            return error_response("None file body")
         image = Image.open(BytesIO(file_parameters["body"]))
-        result = image_classify(image)
+        result = cls_model.classify(image)
+        logger.info(f"Classification result: {result}")
         return response(data=result)
+    except Exception as err:
+        logger.error(err, exc_info=True)
+        return error_response(str(err))
+
+
+@app.route('/detection', methods=["POST"])
+async def api_detection(request):
+    try:
+        data_file = request.files.get('file')
+        if data_file["body"] is None:
+            return error_response("Request for none file data")
+        file_parameters = {
+            'body': data_file.body,
+            'name': data_file.name,
+            'type': data_file.type,
+        }
+        if file_parameters["body"] is None:
+            return error_response("None file body")
+        image = Image.open(BytesIO(file_parameters["body"]))
+        cls = cls_model.classify(image)
+        if cls is not "shelf":
+            logger.info(f'Error image: {cls}')
+            return response(message="图片不合格", data={"qualified": 0, "sku": None})
+        image = cv2.cvtColor(np.asarray(image), cv2.COLOR_RGB2BGR)
+        bboxes, labels = det_model.detect(image)
+        logger.info(f'Detection result bboxes: {bboxes}')
+        logger.info(f'Detection result labels: {labels}')
+        return response(data={"qualified": 1, "sku": Counter(labels)})
     except Exception as err:
         logger.error(err, exc_info=True)
         return error_response(str(err))
