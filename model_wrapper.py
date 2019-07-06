@@ -49,7 +49,10 @@ class ClassifierModelWrapper:
         input = Variable(image_tensor).to(device)
         with torch.no_grad():
             output = self.model.to(device)(input)
+        softmax = F.softmax(output).cpu().numpy()[0]
         result = output.data.cpu().numpy().argmax()
+        if result == 0 and softmax[2] > 0.1:
+            result = 2
         return idx_to_class[result]
 
 
@@ -62,9 +65,9 @@ class DetectorModelWrapper:
 
     def detect(self, img):
         result = inference_detector(self.model, img)
-        return self.calc_result(result, self.model.CLASSES, score_thr=0.3)
+        return self.calc_result(result, self.model.CLASSES, score_thr=0.5)
 
-    def calc_result(self, result, class_names, score_thr=0.3):
+    def calc_result(self, result, class_names, score_thr=0.5):
         bboxes = np.vstack(result)
         labels = [
             np.full(bbox.shape[0], i, dtype=np.int32) for i, bbox in enumerate(result)
