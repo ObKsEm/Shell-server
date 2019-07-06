@@ -2,7 +2,7 @@ import requests
 
 
 def test_classification():  # 分类
-    file_dir = "/Users/lichengzhi/bailian/壳牌/分类1/人工/车立方2.jpg"
+    file_dir = "/Users/lichengzhi/bailian/壳牌/线上/test.jpg"
     data = {"data": "data"}
     file = {"file": open(file_dir, 'rb')}
     url = "http://100.64.32.2:5001/classification"

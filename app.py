@@ -151,7 +151,7 @@ async def api_classification(request):
 async def api_detection(request):
     try:
         data_file = request.files.get('file')
-        if data_file["body"] is None:
+        if data_file is None:
             return error_response("Request for none file data")
         file_parameters = {
             'body': data_file.body,
