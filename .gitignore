@@ -5,3 +5,5 @@
 nohup.out
 __pycache__
 
+models/
+configs/
