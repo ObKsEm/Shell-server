@@ -32,7 +32,7 @@ img_transforms = transforms.Compose([
 
 class ClassifierModelWrapper:
     def __init__(self, model_dir):
-        self.model = models.resnet50(pretrained=False)
+        self.model = models.resnet101(pretrained=False)
         for param in self.model.parameters():
             param.requires_grad = False
         fc_features = self.model.fc.in_features
@@ -51,9 +51,7 @@ class ClassifierModelWrapper:
             output = self.model.to(device)(input)
         softmax = F.softmax(output).cpu().numpy()[0]
         result = output.data.cpu().numpy().argmax()
-        if result == 0 and softmax[2] > 0.1:
-            result = 2
-        return idx_to_class[result]
+        return softmax, idx_to_class[result]
 
 
 class DetectorModelWrapper:

@@ -139,8 +139,8 @@ async def api_classification(request):
         if file_parameters["body"] is None:
             return error_response("None file body")
         image = Image.open(BytesIO(file_parameters["body"]))
-        result = cls_model.classify(image)
-        logger.info(f"Classification result: {result}")
+        softmax, result = cls_model.classify(image)
+        logger.info(f"Classification softmax: {softmax}, result: {result}")
         return response(data=result)
     except Exception as err:
         logger.error(err, exc_info=True)
@@ -161,9 +161,9 @@ async def api_detection(request):
         if file_parameters["body"] is None:
             return error_response("None file body")
         image = Image.open(BytesIO(file_parameters["body"]))
-        cls = cls_model.classify(image)
+        softmax, cls = cls_model.classify(image)
         if cls is not "shelf":
-            logger.info(f'Error image: {cls}')
+            logger.info(f'Error image: {cls}, softmax: {softmax}')
             return response(message="图片不合格", data={"qualified": 0, "sku": None})
         image = cv2.cvtColor(np.asarray(image), cv2.COLOR_RGB2BGR)
         bboxes, labels = det_model.detect(image)
