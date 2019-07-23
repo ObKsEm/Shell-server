@@ -18,8 +18,11 @@ from torch.autograd import Variable
 import torchvision.models as models
 from mmdet.datasets.shell import ShellDataset
 
-class_to_idx = dict({'rests': 0, 'shelf': 1, 'shop': 2})
-idx_to_class = dict(zip(class_to_idx.values(), class_to_idx.keys()))
+cls_class_to_idx = dict({'rests': 0, 'shelf': 1, 'shop': 2})
+cls_idx_to_class = dict(zip(cls_class_to_idx.values(), cls_class_to_idx.keys()))
+
+rot_class_to_idx = dict({'0': 0, '180': 1, '270': 2, '90': 3})
+rot_idx_to_class = dict(zip(rot_class_to_idx.values(), rot_class_to_idx.keys()))
 
 
 img_transforms = transforms.Compose([
@@ -42,6 +45,8 @@ class ClassifierModelWrapper:
 
     def classify(self, img):
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if img.mode is not "RGB":
+            img = img.convert("RGB")
         image_tensor = img_transforms(img).float()
         image_tensor = image_tensor.unsqueeze_(0)
         image_tensor.to(device)
@@ -51,7 +56,7 @@ class ClassifierModelWrapper:
             output = self.model.to(device)(input)
         softmax = F.softmax(output).cpu().numpy()[0]
         result = output.data.cpu().numpy().argmax()
-        return softmax, idx_to_class[result]
+        return softmax, cls_idx_to_class[result]
 
 
 class DetectorModelWrapper:
@@ -82,3 +87,29 @@ class DetectorModelWrapper:
         ret_bboxes = [bboxes[i].tolist() for i in nms_bboxes[1]]
         ret_labels = [class_names[labels[i]] for i in nms_bboxes[1]]
         return ret_bboxes, ret_labels
+
+
+class RotatorModelWrapper:
+    def __init__(self, model_dir):
+        self.model = models.resnet101(pretrained=False)
+        for param in self.model.parameters():
+            param.requires_grad = False
+        fc_features = self.model.fc.in_features
+        self.model.fc = nn.Linear(fc_features, out_features=4)
+        self.model.load_state_dict(torch.load(model_dir))
+        self.model.eval()
+
+    def rotate(self, img):
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if img.mode is not "RGB":
+            img = img.convert("RGB")
+        image_tensor = img_transforms(img).float()
+        image_tensor = image_tensor.unsqueeze_(0)
+        image_tensor.to(device)
+
+        input = Variable(image_tensor).to(device)
+        with torch.no_grad():
+            output = self.model.to(device)(input)
+        softmax = F.softmax(output).cpu().numpy()[0]
+        result = output.data.cpu().numpy().argmax()
+        return softmax, rot_idx_to_class[result]

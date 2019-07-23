@@ -4,13 +4,14 @@ import os
 import re
 import traceback
 from collections import defaultdict, Counter
+import multiprocessing as mp
 
 from sanic import Sanic
 from sanic.exceptions import NotFound
 from sanic.log import logger
 from sanic.response import json
 from sanic_openapi import swagger_blueprint, doc
-from model_wrapper import ClassifierModelWrapper, DetectorModelWrapper
+from model_wrapper import ClassifierModelWrapper, DetectorModelWrapper, RotatorModelWrapper
 
 from PIL import Image
 from io import BytesIO
@@ -27,16 +28,18 @@ RE_BACKSPACES = re.compile("\b+")
 
 cls_model_name = os.environ.get("MODEL_NAME", 'classifier').lower()
 det_model_name = os.environ.get("MODEL_NAME", 'detector').lower()
+rot_model_name = os.environ.get("MODEL_NAME", 'rotator').lower()
 
 n_workers = int(os.environ.get('WORKERS', multiprocessing.cpu_count()))
 
-# model_dir = f"/familia/model/{model_name}"
 cls_model_dir = f"./models/{cls_model_name}"
 det_model_dir = f"./models/{det_model_name}"
+rot_model_dir = f"./models/{rot_model_name}"
 det_config_dir = f"./configs/{det_model_name}.py"
 
 cls_model = ClassifierModelWrapper(cls_model_dir)
 det_model = DetectorModelWrapper(det_model_dir, det_config_dir)
+rot_model = RotatorModelWrapper(rot_model_dir)
 
 
 def get_apperence(word, sentence):
@@ -139,8 +142,34 @@ async def api_classification(request):
         if file_parameters["body"] is None:
             return error_response("None file body")
         image = Image.open(BytesIO(file_parameters["body"]))
+        if image.mode is not "RGB":
+            image = image.convert("RGB")
         softmax, result = cls_model.classify(image)
         logger.info(f"Classification softmax: {softmax}, result: {result}")
+        return response(data=result)
+    except Exception as err:
+        logger.error(err, exc_info=True)
+        return error_response(str(err))
+
+
+@app.route('/rotation', methods=["POST"])
+async def api_rotation(request):
+    try:
+        data_file = request.files.get('file')
+        if data_file is None:
+            return error_response("Request for none file data")
+        file_parameters = {
+            'body': data_file.body,
+            'name': data_file.name,
+            'type': data_file.type,
+        }
+        if file_parameters["body"] is None:
+            return error_response("None file body")
+        image = Image.open(BytesIO(file_parameters["body"]))
+        if image.mode is not "RGB":
+            image = image.convert("RGB")
+        softmax, result = rot_model.rotate(image)
+        logger.info(f"Rotation softmax: {softmax}, result: {result}")
         return response(data=result)
     except Exception as err:
         logger.error(err, exc_info=True)
@@ -161,6 +190,8 @@ async def api_detection(request):
         if file_parameters["body"] is None:
             return error_response("None file body")
         image = Image.open(BytesIO(file_parameters["body"]))
+        if image.mode is not "RGB":
+            image = image.convert("RGB")
         softmax, cls = cls_model.classify(image)
         if cls is not "shelf":
             logger.info(f'Error image: {cls}, softmax: {softmax}')
