@@ -211,4 +211,4 @@ async def api_detection(request):
 
 if __name__ == '__main__':
     logger.info(f"running shell api with {n_workers} workers")
-    app.run(host='0.0.0.0', port=5002, workers=1)
+    app.run(host='0.0.0.0', port=5001, workers=1)
