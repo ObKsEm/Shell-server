@@ -16,7 +16,7 @@ import mmcv
 from mmdet.apis import init_detector, inference_detector
 from torch.autograd import Variable
 import torchvision.models as models
-from mmdet.datasets.shell import ShellDataset
+from mmdet.datasets.MidChineseDescription import MidChineseDescriptionDataset
 
 cls_class_to_idx = dict({'rests': 0, 'shelf': 1, 'shop': 2})
 cls_idx_to_class = dict(zip(cls_class_to_idx.values(), cls_class_to_idx.keys()))
@@ -64,7 +64,7 @@ class DetectorModelWrapper:
         cfg = mmcv.Config.fromfile(config_dir)
         cfg.data.test.test_mode = True
         self.model = init_detector(config_dir, model_dir)
-        self.model.CLASSES = ShellDataset.CLASSES
+        self.model.CLASSES = MidChineseDescriptionDataset.CLASSES
 
     def detect(self, img):
         result = inference_detector(self.model, img)
