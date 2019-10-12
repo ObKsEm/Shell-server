@@ -65,7 +65,7 @@ class DetectorModelWrapper:
         cfg = mmcv.Config.fromfile(config_dir)
         cfg.data.test.test_mode = True
         self.model = init_detector(config_dir, model_dir)
-        self.model.CLASSES = ShellDataset.CLASSES
+        self.model.CLASSES = MidChineseDescriptionDataset.CLASSES
 
     def detect(self, img):
         result = inference_detector(self.model, img)
