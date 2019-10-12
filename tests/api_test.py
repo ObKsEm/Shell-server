@@ -20,9 +20,9 @@ def test_rotation():  # 分类
 
 
 def test_detection():       # 检测
-    file_dir = "/Users/lichengzhi/bailian/壳牌/线上测试/test26.jpg"
+    file_dir = "/Users/lichengzhi/bailian/壳牌/线上测试/test1.jpg"
     file = {"file": open(file_dir, 'rb')}
-    # url = "http://100.64.32.2:5002/detection"
+    # url = "http://100.64.32.2:5001/detection"
     url = "http://bailian-gpu.chinaeast2.cloudapp.chinacloudapi.cn:5001/detection"
     print(requests.post(url=url, files=file).json())
 
