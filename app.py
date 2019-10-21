@@ -203,7 +203,7 @@ async def api_detection(request):
         counters = Counter(labels)
         # if "Unknown" in counters.keys():
         #     del counters["Unknown"]
-        return response(data={"qualified": 1, "sku": counters})
+        return response(data={"qualified": 1, "sku": counters, "bboxes": bboxes, "labels": labels})
     except Exception as err:
         logger.error(err, exc_info=True)
         return error_response(str(err))

@@ -18,6 +18,7 @@ from torch.autograd import Variable
 import torchvision.models as models
 from mmdet.datasets.MidChineseDescription import MidChineseDescriptionDataset
 from mmdet.datasets.shell import ShellDataset
+from mmdet.datasets.rosegold import RoseGoldDataset, RoseGoldMidDataset
 
 cls_class_to_idx = dict({'rests': 0, 'shelf': 1, 'shop': 2})
 cls_idx_to_class = dict(zip(cls_class_to_idx.values(), cls_class_to_idx.keys()))
@@ -65,7 +66,7 @@ class DetectorModelWrapper:
         cfg = mmcv.Config.fromfile(config_dir)
         cfg.data.test.test_mode = True
         self.model = init_detector(config_dir, model_dir)
-        self.model.CLASSES = MidChineseDescriptionDataset.CLASSES
+        self.model.CLASSES = RoseGoldMidDataset.CLASSES
 
     def detect(self, img):
         result = inference_detector(self.model, img)
@@ -85,9 +86,16 @@ class DetectorModelWrapper:
             labels = labels[inds]
 
         nms_bboxes = nms(bboxes, 0.5)
-        ret_bboxes = [bboxes[i].tolist() for i in nms_bboxes[1]]
+        # ret_bboxes = [bboxes[i].tolist() for i in nms_bboxes[1]]
+        ret_bboxes = np.array([bboxes[i] for i in nms_bboxes[1]])
         ret_labels = [class_names[labels[i]] for i in nms_bboxes[1]]
-        return ret_bboxes, ret_labels
+        if len(ret_bboxes) > 0:
+            coords = ret_bboxes[:, :4].tolist()
+            confidence = ret_bboxes[:, 4].tolist()
+        else:
+            coords = []
+            confidence = []
+        return coords, ret_labels
 
 
 class RotatorModelWrapper:
