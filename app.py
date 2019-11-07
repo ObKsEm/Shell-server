@@ -37,7 +37,7 @@ det_model_dir = f"./models/{det_model_name}"
 rot_model_dir = f"./models/{rot_model_name}"
 det_config_dir = f"./configs/{det_model_name}.py"
 
-cls_model = ClassifierModelWrapper(cls_model_dir)
+# cls_model = ClassifierModelWrapper(cls_model_dir)
 det_model = DetectorModelWrapper(det_model_dir, det_config_dir)
 rot_model = RotatorModelWrapper(rot_model_dir)
 
@@ -128,28 +128,28 @@ async def ignore_404s(request, exception):
     return response(message=message)
 
 
-@app.route('/classification', methods=["POST"])
-async def api_classification(request):
-    try:
-        data_file = request.files.get('file')
-        if data_file is None:
-            return error_response("Request for none file data")
-        file_parameters = {
-            'body': data_file.body,
-            'name': data_file.name,
-            'type': data_file.type,
-        }
-        if file_parameters["body"] is None:
-            return error_response("None file body")
-        image = Image.open(BytesIO(file_parameters["body"]))
-        if image.mode is not "RGB":
-            image = image.convert("RGB")
-        softmax, result = cls_model.classify(image)
-        logger.info(f"Classification softmax: {softmax}, result: {result}")
-        return response(data=result)
-    except Exception as err:
-        logger.error(err, exc_info=True)
-        return error_response(str(err))
+# @app.route('/classification', methods=["POST"])
+# async def api_classification(request):
+#     try:
+#         data_file = request.files.get('file')
+#         if data_file is None:
+#             return error_response("Request for none file data")
+#         file_parameters = {
+#             'body': data_file.body,
+#             'name': data_file.name,
+#             'type': data_file.type,
+#         }
+#         if file_parameters["body"] is None:
+#             return error_response("None file body")
+#         image = Image.open(BytesIO(file_parameters["body"]))
+#         if image.mode is not "RGB":
+#             image = image.convert("RGB")
+#         softmax, result = cls_model.classify(image)
+#         logger.info(f"Classification softmax: {softmax}, result: {result}")
+#         return response(data=result)
+#     except Exception as err:
+#         logger.error(err, exc_info=True)
+#         return error_response(str(err))
 
 
 @app.route('/rotation', methods=["POST"])
@@ -192,10 +192,10 @@ async def api_detection(request):
         image = Image.open(BytesIO(file_parameters["body"]))
         if image.mode is not "RGB":
             image = image.convert("RGB")
-        softmax, cls = cls_model.classify(image)
-        if cls is not "shelf":
-            logger.info(f'Error image: {cls}, softmax: {softmax}')
-            return response(message="图片不合格", data={"qualified": 0, "sku": None})
+        # softmax, cls = cls_model.classify(image)
+        # if cls is not "shelf":
+        #     logger.info(f'Error image: {cls}, softmax: {softmax}')
+        #     return response(message="图片不合格", data={"qualified": 0, "sku": None})
         image = cv2.cvtColor(np.asarray(image), cv2.COLOR_RGB2BGR)
         bboxes, labels = det_model.detect(image)
         logger.info(f'Detection result bboxes: {bboxes}')
