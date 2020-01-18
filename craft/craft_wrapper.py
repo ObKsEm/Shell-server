@@ -155,5 +155,8 @@ class CraftModelWrapper:
             x = x.clip(0, width)
             y = y.clip(0, height)
             ret_poly.append(np.dstack((x, y))[0])
-        return ret_poly
+        poly_areas = dict(zip(range(len(ret_poly)), [cv2.contourArea(i) for i in polys]))
+        sorted_areas = sorted(poly_areas.items(), key=lambda x: x[1], reverse=True)
+        ret = ret_poly[sorted_areas[0][0]]
+        return ret_poly[ret]
 

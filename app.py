@@ -226,36 +226,35 @@ async def api_detection(request):
         image = Image.open(BytesIO(file_parameters["body"]))
         if image.mode is not "RGB":
             image = image.convert("RGB")
-        poly_list = []
-        # conf_list = []
-        text_list = []
         image = cv2.cvtColor(np.asarray(image), cv2.COLOR_RGB2BGR)
-        polys = ocr_model.text_detection(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
-        for i, poly in enumerate(polys):
-            x = poly[:, 0]
-            y = poly[:, 1]
-            xmin = np.min(x)
-            ymin = np.min(y)
-            xmax = np.max(x)
-            ymax = np.max(y)
-            poly_img = image[ymin: ymax, xmin: xmax]
-            result = request_for_ocr(poly_img)
-            text = result["data"]["text"]
-            confidence_list = result["data"]["prob"]
-            logger.info(f"Request for ocr server: {result}")
-            if len(confidence_list) < 1:
-                logger.info(f"No character.")
-                continue
-            conf = 1
-            for j in confidence_list:
-                conf *= j
-            if conf < 0.25:
-                logger.info(f"Low confidence.")
-                continue
-            poly_list.append(poly.tolist())
-            text_list.append(text)
-            # conf_list.append(conf)
-        return response(data={"qualified": 1, "polygon": poly_list, "text": text_list})
+        poly = ocr_model.text_detection(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+        # for i, poly in enumerate(polys):
+        x = poly[:, 0]
+        y = poly[:, 1]
+        xmin = np.min(x)
+        ymin = np.min(y)
+        xmax = np.max(x)
+        ymax = np.max(y)
+        poly_img = image[ymin: ymax, xmin: xmax]
+        result = request_for_ocr(poly_img)
+        text = result["data"]["text"]
+        confidence_list = result["data"]["prob"]
+        logger.info(f"Request for ocr server: {result}")
+        ret = True
+        if len(confidence_list) < 1:
+            logger.info(f"No character recognized.")
+            ret = False
+        conf = 1
+        for j in confidence_list:
+            conf *= j
+        if conf < 0.25:
+            logger.info(f"Low confidence.")
+            ret = False
+        # conf_list.append(conf)
+        if ret:
+            return response(data={"qualified": 1, "polygon": poly.tolist(), "text": text})
+        else:
+            return response(data={"qualified": 1, "polygon": [], "text": ""})
     except Exception as err:
         logger.error(err, exc_info=True)
         return error_response(str(err))
