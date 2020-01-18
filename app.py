@@ -4,13 +4,15 @@ import os
 import re
 import traceback
 from collections import defaultdict, Counter
-import multiprocessing as mp
 
 from sanic import Sanic
 from sanic.exceptions import NotFound
 from sanic.log import logger
 from sanic.response import json
 from sanic_openapi import swagger_blueprint, doc
+
+from craft.craft_wrapper import CraftModelWrapper
+from craft.util.request_for_ocr import request_for_ocr
 from model_wrapper import ClassifierModelWrapper, DetectorModelWrapper, RotatorModelWrapper
 
 from PIL import Image
@@ -26,20 +28,25 @@ app.config.API_PRODUCES_CONTENT_TYPES = ['application/json']
 
 RE_BACKSPACES = re.compile("\b+")
 
-cls_model_name = os.environ.get("MODEL_NAME", 'classifier').lower()
-det_model_name = os.environ.get("MODEL_NAME", 'detector').lower()
-rot_model_name = os.environ.get("MODEL_NAME", 'rotator').lower()
+cls_model_name = os.environ.get("CLS_MODEL_NAME", 'classifier').lower()
+det_model_name = os.environ.get("DET_MODEL_NAME", 'detector').lower()
+rot_model_name = os.environ.get("ROT_MODEL_NAME", 'rotator').lower()
+ocr_model_name = os.environ.get("OCR_MODEL_NAME", 'craft').lower()
 
-n_workers = int(os.environ.get('WORKERS', multiprocessing.cpu_count()))
+# n_workers = int(os.environ.get('WORKERS', multiprocessing.cpu_count()))
+n_workers = 1
 
 cls_model_dir = f"./models/{cls_model_name}"
 det_model_dir = f"./models/{det_model_name}"
 rot_model_dir = f"./models/{rot_model_name}"
+ocr_model_dir = f"./models/{ocr_model_name}"
 det_config_dir = f"./configs/{det_model_name}.py"
+
 
 # cls_model = ClassifierModelWrapper(cls_model_dir)
 det_model = DetectorModelWrapper(det_model_dir, det_config_dir)
 rot_model = RotatorModelWrapper(rot_model_dir)
+ocr_model = CraftModelWrapper(ocr_model_dir)
 
 
 def get_apperence(word, sentence):
@@ -192,18 +199,63 @@ async def api_detection(request):
         image = Image.open(BytesIO(file_parameters["body"]))
         if image.mode is not "RGB":
             image = image.convert("RGB")
-        # softmax, cls = cls_model.classify(image)
-        # if cls is not "shelf":
-        #     logger.info(f'Error image: {cls}, softmax: {softmax}')
-        #     return response(message="图片不合格", data={"qualified": 0, "sku": None})
         image = cv2.cvtColor(np.asarray(image), cv2.COLOR_RGB2BGR)
         bboxes, labels = det_model.detect(image)
         logger.info(f'Detection result bboxes: {bboxes}')
         logger.info(f'Detection result labels: {labels}')
         counters = Counter(labels)
-        # if "Unknown" in counters.keys():
-        #     del counters["Unknown"]
         return response(data={"qualified": 1, "sku": counters, "bboxes": bboxes, "labels": labels})
+    except Exception as err:
+        logger.error(err, exc_info=True)
+        return error_response(str(err))
+
+
+@app.route('/ocr', methods=["POST"])
+async def api_detection(request):
+    try:
+        data_file = request.files.get('file')
+        if data_file is None:
+            return error_response("Request for none file data")
+        file_parameters = {
+            'body': data_file.body,
+            'name': data_file.name,
+            'type': data_file.type,
+        }
+        if file_parameters["body"] is None:
+            return error_response("None file body")
+        image = Image.open(BytesIO(file_parameters["body"]))
+        if image.mode is not "RGB":
+            image = image.convert("RGB")
+        poly_list = []
+        # conf_list = []
+        text_list = []
+        image = cv2.cvtColor(np.asarray(image), cv2.COLOR_RGB2BGR)
+        polys = ocr_model.text_detection(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+        for i, poly in enumerate(polys):
+            x = poly[:, 0]
+            y = poly[:, 1]
+            xmin = np.min(x)
+            ymin = np.min(y)
+            xmax = np.max(x)
+            ymax = np.max(y)
+            poly_img = image[ymin: ymax, xmin: xmax]
+            result = request_for_ocr(poly_img)
+            text = result["data"]["text"]
+            confidence_list = result["data"]["prob"]
+            logger.info(f"Request for ocr server: {result}")
+            if len(confidence_list) < 1:
+                logger.info(f"No character.")
+                continue
+            conf = 1
+            for j in confidence_list:
+                conf *= j
+            if conf < 0.25:
+                logger.info(f"Low confidence.")
+                continue
+            poly_list.append(poly.tolist())
+            text_list.append(text)
+            # conf_list.append(conf)
+        return response(data={"qualified": 1, "polygon": poly_list, "text": text_list})
     except Exception as err:
         logger.error(err, exc_info=True)
         return error_response(str(err))

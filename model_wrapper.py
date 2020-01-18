@@ -1,23 +1,13 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
-import torchvision
 import torchvision.transforms as transforms
-import torchvision.datasets as datasets
-from torch.utils.data import DataLoader, Dataset
-
-from PIL import Image
 from mmdet.ops import nms
-import os
-import random
 import numpy as np
 import mmcv
 from mmdet.apis import init_detector, inference_detector
 from torch.autograd import Variable
 import torchvision.models as models
-from mmdet.datasets.MidChineseDescription import MidChineseDescriptionDataset
-from mmdet.datasets.shell import ShellDataset
 from mmdet.datasets.rosegold import RoseGoldDataset, RoseGoldMidDataset
 
 cls_class_to_idx = dict({'rests': 0, 'shelf': 1, 'shop': 2})
