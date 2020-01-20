@@ -223,10 +223,8 @@ async def api_detection(request):
         }
         if file_parameters["body"] is None:
             return error_response("None file body")
-        image = Image.open(BytesIO(file_parameters["body"]))
-        if image.mode is not "RGB":
-            image = image.convert("RGB")
-        image = cv2.cvtColor(np.asarray(image), cv2.COLOR_RGB2BGR)
+        np_arr = np.frombuffer(file_parameters["body"], np.uint8)
+        image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
         poly = ocr_model.text_detection(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
         # for i, poly in enumerate(polys):
         x = poly[:, 0]

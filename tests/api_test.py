@@ -28,9 +28,9 @@ def test_detection():       # 检测
 
 
 def test_ocr():       # 检测
-    file_dir = "/Users/lichengzhi/bailian/壳牌/线上测试/test38.jpg"
+    file_dir = "/Users/lichengzhi/bailian/壳牌/线上测试/test40.jpg"
     file = {"file": open(file_dir, 'rb')}
-    # url = "http://100.64.32.2:5002/detection"
-    url = "http://bailian-gpu.chinaeast2.cloudapp.chinacloudapi.cn:5001/ocr"
+    url = "http://100.64.32.2:5001/ocr"
+    # url = "http://bailian-gpu.chinaeast2.cloudapp.chinacloudapi.cn:5001/ocr"
     print(requests.post(url=url, files=file).json())
 
