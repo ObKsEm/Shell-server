@@ -244,12 +244,6 @@ async def api_detection(request):
         if len(confidence_list) < 1:
             logger.info(f"No character recognized.")
             ret = False
-        conf = 1
-        for j in confidence_list:
-            conf *= j
-        if conf < 0.25:
-            logger.info(f"Low confidence.")
-            ret = False
         # conf_list.append(conf)
         if ret:
             return response(data={"qualified": 1, "polygon": poly.tolist(), "text": text})
