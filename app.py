@@ -13,7 +13,7 @@ from sanic_openapi import swagger_blueprint, doc
 
 from craft.craft_wrapper import CraftModelWrapper
 from craft.util.request_for_ocr import request_for_ocr
-from model_wrapper import ClassifierModelWrapper, DetectorModelWrapper, RotatorModelWrapper
+from model_wrapper import ClassifierModelWrapper, DetectorModelWrapper, RotatorModelWrapper, DoubleDetectorModelWrapper
 
 from PIL import Image
 from io import BytesIO
@@ -32,6 +32,8 @@ cls_model_name = os.environ.get("CLS_MODEL_NAME", 'classifier').lower()
 det_model_name = os.environ.get("DET_MODEL_NAME", 'detector').lower()
 rot_model_name = os.environ.get("ROT_MODEL_NAME", 'rotator').lower()
 ocr_model_name = os.environ.get("OCR_MODEL_NAME", 'craft').lower()
+rg_det_model_name = os.environ.get("RG_DET_MODEL_NAME", "rg_detector").lower()
+ab_det_model_name = os.environ.get("AB_DET_MODEL_NAME", "ab_detector").lower()
 
 # n_workers = int(os.environ.get('WORKERS', multiprocessing.cpu_count()))
 n_workers = 1
@@ -40,11 +42,17 @@ cls_model_dir = f"./models/{cls_model_name}"
 det_model_dir = f"./models/{det_model_name}"
 rot_model_dir = f"./models/{rot_model_name}"
 ocr_model_dir = f"./models/{ocr_model_name}"
+rg_det_model_dir = f"./models/{rg_det_model_name}"
+ab_det_model_dir = f"./models/{ab_det_model_name}"
+
 det_config_dir = f"./configs/{det_model_name}.py"
+rg_det_config_dir = f"./configs/{rg_det_model_name}.py"
+ab_det_config_dir = f"./configs/{ab_det_model_name}.py"
 
 
 # cls_model = ClassifierModelWrapper(cls_model_dir)
-det_model = DetectorModelWrapper(det_model_dir, det_config_dir)
+# det_model = DetectorModelWrapper(det_model_dir, det_config_dir)
+det_model = DoubleDetectorModelWrapper(rg_det_model_dir, rg_det_config_dir, ab_det_model_dir, ab_det_config_dir)
 rot_model = RotatorModelWrapper(rot_model_dir)
 ocr_model = CraftModelWrapper(ocr_model_dir)
 
