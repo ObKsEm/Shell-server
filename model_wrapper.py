@@ -11,7 +11,7 @@ import torchvision.models as models
 from mmdet.datasets.abrg import ABRGDataset, ABRGMidDataset
 from mmdet.datasets.rosegold import RoseGoldDataset, RoseGoldMidDataset
 from mmdet.datasets.UltraAB import UltraABDataset, UltraABMidDataset
-
+import matplotlib.pyplot as plt
 from py_nms import py_cpu_nms
 
 cls_class_to_idx = dict({'rests': 0, 'shelf': 1, 'shop': 2})
@@ -98,15 +98,22 @@ class DoubleDetectorModelWrapper:
         cfgrg.data.test.test_mode = True
         self.modelrg = init_detector(configrg_dir, modelrg_dir)
         self.modelrg.CLASSES = RoseGoldMidDataset.CLASSES
+        self.modelrg.CLASSES_NAME = RoseGoldDataset.CLASSES
         cfgab = mmcv.Config.fromfile(configab_dir)
         cfgab.data.test.test_mode = True
         self.modelab = init_detector(configab_dir, modelab_dir)
         self.modelab.CLASSES = UltraABMidDataset.CLASSES
+        self.modelab.CLASSES_NAME = UltraABDataset.CLASSES
 
     def detect(self, img):
         resultrg = inference_detector(self.modelrg, img)
         resultab = inference_detector(self.modelab, img)
         return self.calc_result(resultrg, resultab, self.modelrg.CLASSES, self.modelab.CLASSES, score_thr=0.5)
+
+    def detect_name(self, img):
+        resultrg = inference_detector(self.modelrg, img)
+        resultab = inference_detector(self.modelab, img)
+        return self.calc_result(resultrg, resultab, self.modelrg.CLASSES_NAME, self.modelab.CLASSES_NAME, score_thr=0.5)
 
     def calc_result(self, resultrg, resultab, rg_class_names, ab_class_names, score_thr=0.5):
         rg_bbox_result = resultrg

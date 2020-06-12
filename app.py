@@ -14,7 +14,7 @@ from sanic_openapi import swagger_blueprint, doc
 from craft.craft_wrapper import CraftModelWrapper
 from craft.util.request_for_ocr import request_for_ocr
 from model_wrapper import ClassifierModelWrapper, DetectorModelWrapper, RotatorModelWrapper, DoubleDetectorModelWrapper
-
+import matplotlib.pyplot as plt
 from PIL import Image
 from io import BytesIO
 import cv2
@@ -216,8 +216,33 @@ async def api_detection(request):
         return error_response(str(err))
 
 
+@app.route('/detection_name', methods=["POST"])
+async def api_detection_name(request):
+    try:
+        data_file = request.files.get('file')
+        if data_file is None:
+            return error_response("Request for none file data")
+        file_parameters = {
+            'body': data_file.body,
+            'name': data_file.name,
+            'type': data_file.type,
+        }
+        if file_parameters["body"] is None:
+            return error_response("None file body")
+        np_arr = np.frombuffer(file_parameters["body"], np.uint8)
+        image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        bboxes, labels = det_model.detect_name(image)
+        logger.info(f'Detection result bboxes: {bboxes}')
+        logger.info(f'Detection result labels: {labels}')
+        counters = Counter(labels)
+        return response(data={"qualified": 1, "sku": counters, "bboxes": bboxes, "labels": labels})
+    except Exception as err:
+        logger.error(err, exc_info=True)
+        return error_response(str(err))
+
+
 @app.route('/ocr', methods=["POST"])
-async def api_detection(request):
+async def api_ocr(request):
     try:
         data_file = request.files.get('file')
         if data_file is None:
