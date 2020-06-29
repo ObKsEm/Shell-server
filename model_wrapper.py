@@ -11,6 +11,8 @@ import torchvision.models as models
 from mmdet.datasets.abrg import ABRGDataset, ABRGMidDataset
 from mmdet.datasets.rosegold import RoseGoldDataset, RoseGoldMidDataset
 from mmdet.datasets.UltraAB import UltraABDataset, UltraABMidDataset
+from mmdet.datasets.Ultra4 import Ultra4SimplifiedMidDataset, Ultra4SimplifiedDataset
+from mmdet.datasets.kvcoco import KVCocoDataset
 import matplotlib.pyplot as plt
 from py_nms import py_cpu_nms
 
@@ -60,11 +62,16 @@ class DetectorModelWrapper:
         cfg = mmcv.Config.fromfile(config_dir)
         cfg.data.test.test_mode = True
         self.model = init_detector(config_dir, model_dir)
-        self.model.CLASSES = RoseGoldDataset.CLASSES
+        self.model.CLASSES = Ultra4SimplifiedMidDataset.CLASSES
+        self.model.CLASSES_NAME = Ultra4SimplifiedDataset.CLASSES
 
     def detect(self, img):
         result = inference_detector(self.model, img)
-        return self.calc_result(result, self.model.CLASSES, score_thr=0.5)
+        return self.calc_result(result, self.model.CLASSES, score_thr=0.3)
+
+    def detect_name(self, img):
+        result = inference_detector(self.model, img)
+        return self.calc_result(result, self.model.CLASSES_NAME, score_thr=0.3)
 
     def calc_result(self, result, class_names, score_thr=0.5):
         bboxes = np.vstack(result)
@@ -83,12 +90,49 @@ class DetectorModelWrapper:
         # ret_bboxes = [bboxes[i].tolist() for i in nms_bboxes[1]]
         ret_bboxes = np.array([bboxes[i] for i in nms_bboxes[1]])
         ret_labels = [class_names[labels[i]] for i in nms_bboxes[1]]
+
         if len(ret_bboxes) > 0:
             coords = ret_bboxes[:, :4].tolist()
             confidence = ret_bboxes[:, 4].tolist()
         else:
             coords = []
             confidence = []
+        return coords, ret_labels
+
+
+class KvModelWrapper:
+    def __init__(self, model_dir, config_dir):
+        cfg = mmcv.Config.fromfile(config_dir)
+        cfg.data.test.test_mode = True
+        self.model = init_detector(config_dir, model_dir)
+        self.model.CLASSES = KVCocoDataset.CLASSES
+
+    def detect(self, img):
+        result = inference_detector(self.model, img)
+        return self.calc_result(result, self.model.CLASSES, score_thr=0.3)
+
+    def calc_result(self, result, class_names, score_thr=0.5):
+        bboxes = np.vstack(result)
+        labels = [
+            np.full(bbox.shape[0], i, dtype=np.int32) for i, bbox in enumerate(result)
+        ]
+        labels = np.concatenate(labels)
+        if score_thr > 0:
+            assert bboxes.shape[1] == 5
+            scores = bboxes[:, -1]
+            inds = scores > score_thr
+            bboxes = bboxes[inds, :]
+            labels = labels[inds]
+
+        nms_bboxes = nms(bboxes, 0.5)
+        ret_bboxes = np.array([bboxes[i] for i in nms_bboxes[1]])
+        ret_labels = [class_names[labels[i]] for i in nms_bboxes[1]]
+        if len(ret_bboxes) > 0:
+            coords = ret_bboxes[:, :4].tolist()
+            # confidence = ret_bboxes[:, 4].tolist()
+        else:
+            coords = []
+            # confidence = []
         return coords, ret_labels
 
 
