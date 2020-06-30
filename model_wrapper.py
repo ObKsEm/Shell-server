@@ -11,7 +11,7 @@ import torchvision.models as models
 from mmdet.datasets.abrg import ABRGDataset, ABRGMidDataset
 from mmdet.datasets.rosegold import RoseGoldDataset, RoseGoldMidDataset
 from mmdet.datasets.UltraAB import UltraABDataset, UltraABMidDataset
-from mmdet.datasets.Ultra4 import Ultra4SimplifiedMidDataset, Ultra4SimplifiedDataset
+
 from mmdet.datasets.kvcoco import KVCocoDataset
 import matplotlib.pyplot as plt
 from py_nms import py_cpu_nms
@@ -58,12 +58,12 @@ class ClassifierModelWrapper:
 
 
 class DetectorModelWrapper:
-    def __init__(self, model_dir, config_dir):
+    def __init__(self, model_dir, config_dir, classes, mid_classes):
         cfg = mmcv.Config.fromfile(config_dir)
         cfg.data.test.test_mode = True
         self.model = init_detector(config_dir, model_dir)
-        self.model.CLASSES = Ultra4SimplifiedMidDataset.CLASSES
-        self.model.CLASSES_NAME = Ultra4SimplifiedDataset.CLASSES
+        self.model.CLASSES = mid_classes
+        self.model.CLASSES_NAME = classes
 
     def detect(self, img):
         result = inference_detector(self.model, img)

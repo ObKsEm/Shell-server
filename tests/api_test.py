@@ -24,9 +24,9 @@ def test_rotation():  # 分类
 def test_detection():       # 检测
     file_dir = "/Users/lichengzhi/bailian/壳牌/线上测试/test72.jpg"
     file = {"file": open(file_dir, 'rb')}
-    # url = "http://100.64.32.2:5001/detection"
-    url = "http://gpu1.bl-ai.com:5001/detection_kv"
-    # url = "http://bailian-gpu.chinaeast2.cloudapp.chinacloudapi.cn:5001/detection"
+    url = "http://100.64.32.2:5001/detection_detail"
+    # url = "http://gpu1.bl-ai.com:5001/detection_kv"
+    # url = "http://bailian-gpu.chinaeast2.cloudapp.chinacloudapi.cn:5001/detection_kv"
     result = requests.post(url=url, files=file).json()
     print(result)
 
