@@ -8,7 +8,6 @@ import mmcv
 from mmdet.apis import init_detector, inference_detector
 from torch.autograd import Variable
 import torchvision.models as models
-from mmdet.datasets.abrg import ABRGDataset, ABRGMidDataset
 from mmdet.datasets.rosegold import RoseGoldDataset, RoseGoldMidDataset
 from mmdet.datasets.UltraAB import UltraABDataset, UltraABMidDataset
 

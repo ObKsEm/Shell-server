@@ -21,6 +21,7 @@ import cv2
 import numpy as np
 
 from mmdet.datasets.Ultra4 import Ultra4Dataset, Ultra4MidDataset, Ultra4SimplifiedMidDataset, Ultra4SimplifiedDataset
+from mmdet.datasets.crto import CRTODataset, CRTOMidDataset
 
 app = Sanic("Shell Api", strict_slashes=True)
 app.blueprint(swagger_blueprint)
@@ -38,12 +39,14 @@ ocr_model_name = os.environ.get("OCR_MODEL_NAME", 'craft').lower()
 rg_det_model_name = os.environ.get("RG_DET_MODEL_NAME", "rg_detector").lower()
 ab_det_model_name = os.environ.get("AB_DET_MODEL_NAME", "ab_detector").lower()
 kv_model_name = os.environ.get("KV_MODEL_NAME", 'kv_detector').lower()
+crto_det_model_name = os.environ.get("CRTO_DET_MODEL_NAME", 'crto_detector').lower()
 
 # n_workers = int(os.environ.get('WORKERS', multiprocessing.cpu_count()))
 n_workers = 1
 
 cls_model_dir = f"./models/{cls_model_name}"
 det_model_dir = f"./models/{det_model_name}"
+crto_det_model_dir= f"./models/{crto_det_model_name}"
 detail_det_model_dir = f"./models/{detail_det_model_name}"
 rot_model_dir = f"./models/{rot_model_name}"
 ocr_model_dir = f"./models/{ocr_model_name}"
@@ -51,8 +54,10 @@ rg_det_model_dir = f"./models/{rg_det_model_name}"
 ab_det_model_dir = f"./models/{ab_det_model_name}"
 kv_model_dir = f"./models/{kv_model_name}"
 
+
 det_config_dir = f"./configs/{det_model_name}.py"
 detail_det_config_dir = f"./configs/{detail_det_model_name}.py"
+crto_det_config_dr = f"./configs/{crto_det_model_name}.py"
 rg_det_config_dir = f"./configs/{rg_det_model_name}.py"
 ab_det_config_dir = f"./configs/{ab_det_model_name}.py"
 kv_config_dir = f"./configs/{kv_model_name}.py"
@@ -61,6 +66,7 @@ kv_config_dir = f"./configs/{kv_model_name}.py"
 # cls_model = ClassifierModelWrapper(cls_model_dir)
 det_model = DetectorModelWrapper(det_model_dir, det_config_dir, Ultra4SimplifiedDataset.CLASSES, Ultra4SimplifiedMidDataset.CLASSES)
 detail_det_model = DetectorModelWrapper(detail_det_model_dir, detail_det_config_dir, Ultra4Dataset.CLASSES, Ultra4MidDataset.CLASSES)
+crto_det_model = DetectorModelWrapper(crto_det_model_dir, crto_det_config_dr, CRTODataset.CLASSES, CRTOMidDataset.CLASSES)
 kv_model = KvModelWrapper(kv_model_dir, kv_config_dir)
 # det_model = DoubleDetectorModelWrapper(rg_det_model_dir, rg_det_config_dir, ab_det_model_dir, ab_det_config_dir)
 rot_model = RotatorModelWrapper(rot_model_dir)
@@ -226,6 +232,30 @@ async def api_detection(request):
         return error_response(str(err))
 
 
+@app.route('/detection_crto', methods=["POST"])
+async def api_detection(request):
+    try:
+        data_file = request.files.get('file')
+        if data_file is None:
+            return error_response("Request for none file data")
+        file_parameters = {
+            'body': data_file.body,
+            'name': data_file.name,
+            'type': data_file.type,
+        }
+        if file_parameters["body"] is None:
+            return error_response("None file body")
+        np_arr = np.frombuffer(file_parameters["body"], np.uint8)
+        image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        bboxes, labels = crto_det_model.detect(image)
+        logger.info(f'Detection result bboxes: {bboxes}')
+        logger.info(f'Detection result labels: {labels}')
+        counters = Counter(labels)
+        return response(data={"qualified": 1, "sku": counters, "bboxes": bboxes, "labels": labels})
+    except Exception as err:
+        logger.error(err, exc_info=True)
+
+
 @app.route('/detection_detail', methods=["POST"])
 async def api_detection(request):
     try:
@@ -242,6 +272,31 @@ async def api_detection(request):
         np_arr = np.frombuffer(file_parameters["body"], np.uint8)
         image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
         bboxes, labels = detail_det_model.detect(image)
+        logger.info(f'Detection result bboxes: {bboxes}')
+        logger.info(f'Detection result labels: {labels}')
+        counters = Counter(labels)
+        return response(data={"qualified": 1, "sku": counters, "bboxes": bboxes, "labels": labels})
+    except Exception as err:
+        logger.error(err, exc_info=True)
+        return error_response(str(err))
+
+
+@app.route('/detection_crto_name', methods=["POST"])
+async def api_detection(request):
+    try:
+        data_file = request.files.get('file')
+        if data_file is None:
+            return error_response("Request for none file data")
+        file_parameters = {
+            'body': data_file.body,
+            'name': data_file.name,
+            'type': data_file.type,
+        }
+        if file_parameters["body"] is None:
+            return error_response("None file body")
+        np_arr = np.frombuffer(file_parameters["body"], np.uint8)
+        image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        bboxes, labels = crto_det_model.detect_name(image)
         logger.info(f'Detection result bboxes: {bboxes}')
         logger.info(f'Detection result labels: {labels}')
         counters = Counter(labels)
@@ -296,6 +351,31 @@ async def api_detection_name(request):
         np_arr = np.frombuffer(file_parameters["body"], np.uint8)
         image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
         bboxes, labels = det_model.detect_name(image)
+        logger.info(f'Detection result bboxes: {bboxes}')
+        logger.info(f'Detection result labels: {labels}')
+        counters = Counter(labels)
+        return response(data={"qualified": 1, "sku": counters, "bboxes": bboxes, "labels": labels})
+    except Exception as err:
+        logger.error(err, exc_info=True)
+        return error_response(str(err))
+
+
+@app.route('/detection_detail_name', methods=["POST"])
+async def api_detection_name(request):
+    try:
+        data_file = request.files.get('file')
+        if data_file is None:
+            return error_response("Request for none file data")
+        file_parameters = {
+            'body': data_file.body,
+            'name': data_file.name,
+            'type': data_file.type,
+        }
+        if file_parameters["body"] is None:
+            return error_response("None file body")
+        np_arr = np.frombuffer(file_parameters["body"], np.uint8)
+        image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        bboxes, labels = detail_det_model.detect_name(image)
         logger.info(f'Detection result bboxes: {bboxes}')
         logger.info(f'Detection result labels: {labels}')
         counters = Counter(labels)
